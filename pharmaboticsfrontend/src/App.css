@@ -1,0 +1,35 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.navButton{
+  background-color: white;
+  color: black;
+  transition: 0.4s ease-in-out;
+}
+
+.navButton:hover{
+  background-color: #545fdd;
+  color: white;  
+}
+
+.active {
+  background-color: #545fdd;
+  color: white;
+}
+
+.pageBg{
+  background-color: #fafafa;
+}
+
+.line{
+  height: 1px;
+}
+
+.border{
+  border-right: 1px solid rgb(164, 164, 164);
+}
+
+.borderFull{
+  border: 1px solid rgb(164, 164, 164);
+}
