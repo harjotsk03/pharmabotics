@@ -1,0 +1,122 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.app{
+  overflow: hidden;
+}
+
+.quicksand-light {
+  font-family: "Quicksand", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 300;
+  font-style: normal;
+}
+
+.quicksand-regular {
+  font-family: "Quicksand", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 400;
+  font-style: normal;
+}
+
+.quicksand-medium {
+  font-family: "Quicksand", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 500;
+  font-style: normal;
+}
+
+.quicksand-semibold {
+  font-family: "Quicksand", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 600;
+  font-style: normal;
+}
+
+.quicksand-bold {
+  font-family: "Quicksand", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 700;
+  font-style: normal;
+}
+
+body, html{
+  background-color: rgb(236, 236, 236);
+}
+
+.bgColor{
+  background-color: rgb(236, 236, 236);
+}
+
+.navButton{
+  background-color: white;
+  color: black;
+  transition: 0.4s ease-in-out;
+}
+
+.navButton:hover{
+  background-color: #545fdd;
+  color: white;  
+}
+
+.active {
+  background-color: #545fdd;
+  color: white;
+}
+
+.pageBg{
+  background-color: #fafafa;
+}
+
+.line{
+  height: 1px;
+}
+
+.border{
+  border-right: 1px solid rgb(164, 164, 164);
+}
+
+.borderFull{
+  border: 1px solid rgb(164, 164, 164);
+}
+
+.logInBtn{
+  background-color: #545fdd;
+  color: white;
+  font-family: "Quicksand", sans-serif;
+  font-weight: 600;
+  border: 2px solid transparent;
+  transition: 0.3s ease-in-out;
+}
+
+.logInBtn:hover{
+  background-color: white;
+  color: #545fdd;
+  border: 2px solid #545fdd;
+}
+
+.input{
+  width: 20vw;
+  padding: 0.5vw 0.75vw 0.5vw 0.75vw;
+  border-radius: 0.4vw;
+  margin-top: 0.25vw;
+  font-family: "Quicksand", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 500;
+  font-style: normal;
+  background: #fafafa;
+  margin-left: 1vw;
+}
+
+.accentColor{
+  color: #545fdd;
+}
+
+.bgColor{
+  background-color: #e4ecf9;
+}
+
+.textColor{
+  color: #A7BADA;
+}
