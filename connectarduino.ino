@@ -9,33 +9,77 @@ SoftwareSerial mySerial(2, 3);
 
 Adafruit_Fingerprint finger = Adafruit_Fingerprint(&mySerial);
 
-#define LEDPIN 13 // Define LED pin
+#define LEDPIN 13
 
 // Ultrasonic sensor pins
-const int triggerPin = 8;
-const int echoPin = 9;
+const int triggerPin = 9;
+const int echoPin = 8;
 
+// pins for motor medicine 1
+const int motorPin1 = 4;
+const int motorPin2 = 5;
+
+// pins for motor medicine 2
+const int motorPin12 = 10; 
+const int motorPin22 = 11; 
+
+// all three pwm pins
+const int pwmPin = 6; 
+const int pwmPin2 = 7;
+const int pwmPinLid = 12; 
+
+// control which medication gets dispensed
+int medState;
+
+// check if user is doctor
+bool isDoctor = false;
+
+// check to see if lid is open
+bool isOpen = false;
+
+// threshold for pressure sensor to open and close lid
+const int threshold = 200;
+
+// pin for pressure sensor
+const int fsrPin = A0;
+
+// pins for the lid motor 
+const int motorLidPin1 = 1;
+const int motorLidPin2 = 2;
+
+// object to store user data on sensor
 struct User {
   uint8_t id;
   String name;
 };
 
-User user; // Variable to hold a single user
+User user; 
 uint8_t id;
 
+// variable to control spinning of motors 
 bool allowMotion = false; // Flag to control motion detection
 
 void setup() {
   pinMode(LEDPIN, OUTPUT);
   pinMode(triggerPin, OUTPUT);
   pinMode(echoPin, INPUT);
+  pinMode(motorPin1, OUTPUT);
+  pinMode(motorPin2, OUTPUT);
+  pinMode(pwmPin, OUTPUT);
+
+  pinMode(motorPin12, OUTPUT);
+  pinMode(motorPin22, OUTPUT);
+  pinMode(pwmPin2, OUTPUT);
+  
+  pinMode(motorLidPin1, OUTPUT);
+  pinMode(motorLidPin2, OUTPUT);
+  pinMode(pwmPinLid, OUTPUT);
 
   Serial.begin(9600);
-  while (!Serial);  // For Yun/Leo/Micro/Zero/...
+  while (!Serial); 
 
   Serial.println("\n\nAdafruit Fingerprint sensor enrollment and identification");
 
-  // Set the data rate for the sensor serial port
   finger.begin(57600);
 
   if (finger.verifyPassword()) {
@@ -45,15 +89,9 @@ void setup() {
     while (1) { delay(1); }
   }
 
-  Serial.println(F("Reading sensor parameters"));
-  finger.getParameters();
-  Serial.print(F("Status: 0x")); Serial.println(finger.status_reg, HEX);
-  Serial.print(F("Sys ID: 0x")); Serial.println(finger.system_id, HEX);
-  Serial.print(F("Capacity: ")); Serial.println(finger.capacity);
-  Serial.print(F("Security level: ")); Serial.println(finger.security_level);
-  Serial.print(F("Device address: 0x")); Serial.println(finger.device_addr, HEX);
-  Serial.print(F("Packet len: ")); Serial.println(finger.packet_len);
-  Serial.print(F("Baud rate: ")); Serial.println(finger.baud_rate);
+
+  // function to clear and wipe prints 
+  // clearAllPrints();
 }
 
 void loop() {
@@ -61,22 +99,39 @@ void loop() {
     String command = Serial.readStringUntil('\n');
     command.trim();
 
+  // a bunch of states to control what happens depending on the port.write(...) from the node js server
     if (command == "enroll") {
       uint8_t id = Serial.parseInt();
       enrollFingerprint(id);
     } else if (command == "check") {
-      checkFingerprint();
-    } else if (command == "allowMotion") {
-      allowMotion = true; // Set the flag to allow motion detection
+        Serial.println("Starting fingerprint scan...");
+        checkFingerprint();
+        // if the user is a doctor we allow the openLid function to be called
+        if(isDoctor){
+          openLid();
+        }
+    }else if(command == "logout"){
+      digitalWrite(LEDPIN, LOW);
+      allowMotion = false;
+    } else if (command == ("allowMotionAdvil")) {
+        digitalWrite(LEDPIN, HIGH);
+        medState = 0; 
+        allowMotion = true;
+    } else if (command == ("allowMotionTylenol")) {
+        digitalWrite(LEDPIN, HIGH);
+        medState = 1; 
+        allowMotion = true;
     } else if (command == "lightoff") {
       digitalWrite(LEDPIN, LOW);
-      allowMotion = false; // Reset the flag to stop motion detection
+      allowMotion = false;
     }
   }
 
   if (allowMotion) {
     detectProximity();
   }
+
+  
 }
 
 
@@ -91,13 +146,14 @@ void enrollFingerprint(uint8_t id) {
   Serial.println("enrollment complete"); // Send success message to server
 }
 
+
 bool checkFingerprint() {
   Serial.println("Waiting for fingerprint input...");
   uint8_t p = -1;
   unsigned long startTime = millis(); // Start time for LED timeout
   bool ledOn = false; // Flag to track LED state
 
-  while (millis() - startTime < 3000) {
+  while (millis() - startTime < 10000) {
     p = finger.getImage();
     switch (p) {
       case FINGERPRINT_OK:
@@ -284,23 +340,131 @@ void detectProximity() {
   long duration;
   int distance;
 
-  // Set the trigger pin HIGH for 10 microseconds
+  digitalWrite(triggerPin, LOW);
+  delayMicroseconds(2);
+
+  // Set the trigger pin high for 10 microseconds
   digitalWrite(triggerPin, HIGH);
   delayMicroseconds(10);
   digitalWrite(triggerPin, LOW);
 
-  // Read the echo pin
+  // Read the echo pin and calculate the distance
   duration = pulseIn(echoPin, HIGH);
+  distance = duration * 0.034 / 2; // Convert to centimeters
 
-  // Calculate the distance in centimeters
-  distance = duration * 0.034 / 2;
+  // Send distance to serial port
+  Serial.print("Distance: ");
+  Serial.println(distance);
 
-  // Check if an object is within 10 cm
-  if (distance < 2) {
-    Serial.println("close");
-  } else {
-    digitalWrite(LEDPIN, LOW); // Turn off the LED
+  if (distance < 6) { 
+    Serial.println("Object detected within 6 cm");
+    Serial.println("objectDetected");
+    digitalWrite(LEDPIN, LOW);
+    if(medState == 0){
+      startMotorOne();
+    }else if(medState == 1){
+      startMotorTwo();
+    }
+    allowMotion = false;
   }
 
   delay(100); // Delay between checks
 }
+
+// this is one motor starting and stoping 
+void startMotorOne(){
+  digitalWrite(motorPin1, HIGH);
+  digitalWrite(motorPin2, LOW);
+  analogWrite(pwmPin, 80); 
+  delay(1100);
+  analogWrite(pwmPin, 0);
+  delay(500);
+}
+
+// this is the other motor, the reason they are different is due to PWM frequency issues with DC Motor drivers, this took forever to understand why one motor
+// was spinning and the other was not...LOL
+void startMotorTwo(){
+  digitalWrite(motorPin12, HIGH);
+  digitalWrite(motorPin22, LOW);
+  analogWrite(pwmPin2, 130); 
+  delay(200);
+  analogWrite(pwmPin2, 0);
+  delay(500);
+  analogWrite(pwmPin2, 130); 
+  delay(80);
+  analogWrite(pwmPin2, 0);
+  delay(80);
+  analogWrite(pwmPin2, 130); 
+  delay(80);
+  analogWrite(pwmPin2, 0);
+  delay(80);
+  analogWrite(pwmPin2, 130); 
+  delay(80);
+  analogWrite(pwmPin2, 0);
+  delay(200);
+  analogWrite(pwmPin2, 130); 
+  delay(80);
+  analogWrite(pwmPin2, 0);
+  delay(200);
+  analogWrite(pwmPin2, 130); 
+  delay(80);
+  analogWrite(pwmPin2, 0);
+  delay(200);
+
+  analogWrite(pwmPin2, 0);
+  delay(2000); 
+}
+
+voidLid(){
+  isOpen = false;
+  
+  // level is the number recived from the presure sensor value
+  if(isOpen == false && level > threshold){
+    openLidCall();
+  }else if(isOpen == true && level > threshold){
+    closeLidCall();
+  }
+
+  delay(50);
+
+}
+
+void openLidCall(){
+  digitalWrite(motorPinLid1, HIGH);
+  digitalWrite(motorPinLid2, LOW);
+
+  analogWrite(pwmPinLid, 105);
+  delay(60);
+
+  digitalWrite(motorPinLid1, LOW);
+  digitalWrite(motorPinLid2, LOW);
+
+  isOpen = true;
+}
+
+void openLidCall(){
+  digitalWrite(motorPinLid1, LOW);
+  digitalWrite(motorPinLid2, HIGH);
+
+  analogWrite(pwmPinLid, 105);
+  delay(60);
+
+  digitalWrite(motorPinLid1, LOW);
+  digitalWrite(motorPinLid2, LOW);
+
+  isOpen = false;
+}
+
+
+// void clearAllPrints() {
+//   Serial.println("Clearing all enrolled prints:");
+
+//   for (uint8_t id = 0; id <= 240; id++) {
+//     Serial.print("Deleting ID #"); Serial.println(id);
+//     if (finger.deleteModel(id)) {
+//       Serial.print("Deleted ID #"); Serial.println(id);
+//     } else {
+//       Serial.print("Failed to delete ID #"); Serial.println(id);
+//     }
+//   }
+// }
